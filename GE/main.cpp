@@ -1,6 +1,7 @@
 #include <iostream>
 #include "GamesEngineeringBase.h" // Include the GamesEngineeringBase header
 #include <fstream>
+#include <sstream>
 
 using namespace std;
 
@@ -78,6 +79,20 @@ public:
         }
     }
     tile& operator[](unsigned int index) { return tiles[index]; }
+};
+
+class world1 {
+public:
+    world1(string filename) {
+        ifstream infile(filename);
+        int tilenum, i;
+        string map[42][42];
+        string line;
+
+        while (getline(infile, line)) {
+            std::stringstream ss(line);
+        }
+    }
 };
 
 const int maxSize = 100;
