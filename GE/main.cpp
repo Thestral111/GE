@@ -54,11 +54,18 @@ public:
         sprite.load(filename);
     }
     void draw(GamesEngineeringBase::Window& canvas, int x, int y) {
-        for (unsigned int i = 0; i < sprite.height; i++)
+        for (unsigned int i = 0; i < sprite.height; i++) {
             // bounds checking goes here
-            if (y + i > 0 && (y + i) < (canvas.getHeight()))
-                for (unsigned int n = 0; n < sprite.width; n++)
-                    canvas.draw(x + n, y + i, sprite.atUnchecked(n, i));
+            if (y + i > 0 && (y + i) < (canvas.getHeight())) {
+                for (unsigned int n = 0; n < sprite.width; n++) {
+                    if (x + n > 0 && (x + n) < (canvas.getWidth()))
+                        canvas.draw(x + n, y + i, sprite.atUnchecked(n, i));
+
+                }
+            }
+
+        }
+    
     }
     unsigned int getHeight() { return sprite.height; }
     unsigned int getWidth() { return sprite.width; }
@@ -83,14 +90,42 @@ public:
 
 class world1 {
 public:
+    tile tiles[42][42];
     world1(string filename) {
         ifstream infile(filename);
-        int tilenum, i;
+        int tilenum;
         string map[42][42];
         string line;
-
+        string tilename;
+        //tile tiles[42][42];
+        int i = 0;
+        
         while (getline(infile, line)) {
-            std::stringstream ss(line);
+            stringstream ss(line);
+            string number;
+            int j = 0;
+            //cout << "i = " << i << endl;
+
+            while (getline(ss, number, ',')) {
+                //cout << "j = " << j << endl;
+                map[i][j] = number;
+                //cout << map[i][j] << " ";
+                tilename = "Resources/" + number + ".png";
+                tiles[i][j].load(tilename);
+                j++;
+                
+            }
+            i++;
+        }
+        //cout << map;
+        
+
+    }
+    void draw(GamesEngineeringBase::Window& canvas, int x, int y) {
+        for (int i = 0; i < 42; i++) {
+            for (int j = 0; j < 42; j++) {
+                tiles[i][j].draw(canvas, (0 + x + j * 32), (0 + y + i * 32));
+            }
         }
     }
 };
@@ -196,6 +231,7 @@ int main() {
     // Create a canvas window with dimensions 1024x768 and title "Example"
     GamesEngineeringBase::Window canvas;
     canvas.create(1024, 768, "Tiles");
+    //canvas.create(1920, 1080, "Tiles");
     bool running = true; // Variable to control the main loop's running state.
 
     // Timer object to manage time-based events, such as movement speed
@@ -204,6 +240,7 @@ int main() {
     //world w;
     world w("order.txt");
     hero h(canvas.getWidth() / 2, canvas.getHeight()/2);
+    world1 w1("Resources/tiles1.txt");
 
     int x = 0;
     int y = 0;
@@ -217,12 +254,12 @@ int main() {
         bool alpha = false;
 
         if (canvas.keyPressed(VK_ESCAPE)) break;
-        if (canvas.keyPressed('W')) y += 2;
-        if (canvas.keyPressed('S')) y -= 2;
+        if (canvas.keyPressed('W')) y += 1;
+        if (canvas.keyPressed('S')) y -= 1;
         //if (canvas.keyPressed('A')) h.update(-2, 0);
         //if (canvas.keyPressed('D')) h.update(2, 0);
-        if (canvas.keyPressed('A')) x += 2;
-        if (canvas.keyPressed('D')) x -= 2;
+        if (canvas.keyPressed('A')) x += 1;
+        if (canvas.keyPressed('D')) x -= 1;
         //if (canvas.keyPressed('Q')) alpha = !alpha;
         // scroll vertically all the time
 
@@ -232,7 +269,8 @@ int main() {
         /*if (alpha)
             w.drawAlpha(canvas, y);
         else*/
-        w.draw(canvas, x, y);
+        //w.draw(canvas, x, y);
+        w1.draw(canvas, x, y);
         h.draw(canvas);
         //w.collision(canvas, h, y);
 
