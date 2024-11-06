@@ -2,6 +2,7 @@
 #include "GamesEngineeringBase.h" // Include the GamesEngineeringBase header
 #include <fstream>
 #include <sstream>
+#include <cmath>
 
 using namespace std;
 
@@ -113,11 +114,42 @@ const int emaxsize = 100;
 class enemy : public entity{
     
 public:
+    float speed = 300.f;
+    int move;
     enemy() {
         sprite.load("Resources/L2.png");
+        x = rand() % 2688 - 1344;
+        y = rand() % 2688 - 1344;
+        cout << "pos: " << x << " " << y << endl;
     }
-    void update(GamesEngineeringBase::Window& canvas, float dt) {
+    void update(GamesEngineeringBase::Window& canvas, float dt, int px, int py) {
         // towards player
+        int xOffset = px - x;
+        int yOffset = py - y;
+        float dist = sqrt(xOffset * xOffset + yOffset * yOffset);
+        //cout << dist << endl;
+        move = static_cast<int>((speed * dt));
+        x += xOffset / dist * move;
+        y += yOffset / dist * move;
+
+    }
+
+    void draw(GamesEngineeringBase::Window& canvas, int _x, int _y) {
+        //x += _x;
+        //y += _y;
+        _x += x;
+        _y += y;
+        for (unsigned int i = 0; i < sprite.height; i++) {
+            // bounds checking goes here
+            if (_y + i > 0 && (_y + i) < (canvas.getHeight())) {
+                for (unsigned int n = 0; n < sprite.width; n++) {
+                    if (_x + n > 0 && (_x + n) < (canvas.getWidth()))
+                        canvas.draw(_x + n, _y + i, sprite.atUnchecked(n, i));
+
+                }
+            }
+
+        }
     }
     
 };
@@ -127,7 +159,7 @@ public:
     enemy* sarray[emaxsize];
     int currentSize = 0;
     float timeElapsed = 0.f;
-    float timeThreshold = 3.f;
+    float timeThreshold = 2.f;
     
     enemyList() {
 
@@ -135,13 +167,40 @@ public:
 
     void generateEnemy(GamesEngineeringBase::Window& canvas, float dt) {
         timeElapsed += dt;
+        if (currentSize < emaxsize) {
+            if (timeElapsed > timeThreshold) { // create new plane
+                enemy* p = new enemy();
+                //  cout << "Created: " << currentSize << '\t' << timeThreshold << '\t' << dt << endl;
+                cout << "Created: " << currentSize << endl;
+
+                sarray[currentSize++] = p;
+                timeElapsed = 0.f;
+                //timeThreshold -= 0.2f;
+                //timeThreshold = max(0.2f, timeThreshold);
+            }
+        }
+    }
+
+    void update(GamesEngineeringBase::Window& canvas, float dt, int cx, int cy) {
+        generateEnemy(canvas, dt);
+        int playerX = cx + canvas.getWidth() / 2;
+        int playerY = cy + canvas.getHeight() / 2;
+        for (unsigned int i = 0; i < currentSize; i++) {
+            if (sarray[i] != nullptr) {
+                sarray[i]->update(canvas, dt, playerX, playerY);
+            }
+        }
+        
+        // update every enemy
 
     }
 
-    void update(GamesEngineeringBase::Window& canvas, float dt) {
-        generateEnemy(canvas, dt);
-        // update every enemy
-
+    void draw(GamesEngineeringBase::Window& canvas, int x, int y) {
+        for (unsigned int i = 0; i < currentSize; i++)
+        {
+            if (sarray[i] != nullptr)
+                sarray[i]->draw(canvas, x, y);
+        }
     }
 
 };
@@ -241,7 +300,7 @@ public:
     int x = 0;
     int y = 0;
     GamesEngineeringBase::Timer timer;
-    float dt;
+    //float dt;
     int move;
     
 
@@ -249,9 +308,9 @@ public:
         
     }
 
-    void updatePos(GamesEngineeringBase::Window& canvas) {
+    void updatePos(GamesEngineeringBase::Window& canvas, float dt) {
         /*if (canvas.keyPressed(VK_ESCAPE)) break;*/
-        dt = timer.dt();
+        //dt = timer.dt();
         move = static_cast<int>((500.f * dt));
         //cout << "move = " << move << endl;
    
@@ -268,14 +327,16 @@ public:
         if (y < -960) y = -960;
         //cout << "x = " << x << " ";
         //cout << "y = " << y << endl;
+        
     }
 
-    void draw(GamesEngineeringBase::Window& canvas, world1& w1, hero& h) {
+    void draw(GamesEngineeringBase::Window& canvas, world1& w1, hero& h, enemyList& el) {
         w1.draw(canvas, x, y);
         w1.draw(canvas, x - 1344, y); // splicing larger map 
         w1.draw(canvas, x, y - 1344);
         w1.draw(canvas, x - 1344, y - 1344);
         h.draw(canvas);
+        el.draw(canvas, x, y);
     }
 
 };
@@ -377,8 +438,8 @@ public:
 
 
 int main() {
-    enemy e;
-    node<enemy> newnode(e);
+    //enemy e;
+    //node<enemy> newnode(e);
     srand(static_cast<unsigned int>(time(nullptr)));
     // Create a canvas window with dimensions 1024x768 and title "Example"
     GamesEngineeringBase::Window canvas;
@@ -387,12 +448,13 @@ int main() {
     bool running = true; // Variable to control the main loop's running state.
 
     // Timer object to manage time-based events, such as movement speed
-    //GamesEngineeringBase::Timer timer;
+    GamesEngineeringBase::Timer timer;
 
     //world w;
-    world w("order.txt");
+    //world w("order.txt");
     hero h(canvas.getWidth() / 2, canvas.getHeight()/2);
     world1 w1("Resources/tiles1.txt");
+    enemyList el;
     camera c;
 
     int x = 0;
@@ -405,11 +467,12 @@ int main() {
         canvas.clear();
 
         bool alpha = false;
-        /*float dt = timer.dt();
-        int move = static_cast<int>((500.f * dt));*/
+        float dt = timer.dt();
+        //int move = static_cast<int>((500.f * dt));
 
         if (canvas.keyPressed(VK_ESCAPE)) break;
-        c.updatePos(canvas);
+        c.updatePos(canvas, dt);
+        el.update(canvas, dt, -(c.x), -(c.y));
         //if (canvas.keyPressed('W')) y += move;
         //if (canvas.keyPressed('S')) y -= move;
         //if (canvas.keyPressed('A')) h.update(-2, 0);
@@ -430,7 +493,7 @@ int main() {
         //w1.draw(canvas, x - 1344, y); // splicing larger map 
         //h.draw(canvas);
         //w.collision(canvas, h, y);
-        c.draw(canvas, w1, h);
+        c.draw(canvas, w1, h, el);
 
 
         // Display the frame on the screen. This must be called once the frame is finished in order to display the frame.
