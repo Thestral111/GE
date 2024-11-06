@@ -114,7 +114,7 @@ const int emaxsize = 100;
 class enemy : public entity{
     
 public:
-    float speed = 300.f;
+    float speed = 200.f;
     int move;
     enemy() {
         sprite.load("Resources/L2.png");
@@ -129,8 +129,11 @@ public:
         float dist = sqrt(xOffset * xOffset + yOffset * yOffset);
         //cout << dist << endl;
         move = static_cast<int>((speed * dt));
-        x += xOffset / dist * move;
-        y += yOffset / dist * move;
+        if (dist > 5.f) {
+            x += xOffset / dist * move;
+            y += yOffset / dist * move;
+        }
+        
 
     }
 
@@ -139,13 +142,16 @@ public:
         //y += _y;
         _x += x;
         _y += y;
+        _x -= (sprite.width / 2);
+        _y -= (sprite.height / 2);
         for (unsigned int i = 0; i < sprite.height; i++) {
             // bounds checking goes here
             if (_y + i > 0 && (_y + i) < (canvas.getHeight())) {
                 for (unsigned int n = 0; n < sprite.width; n++) {
-                    if (_x + n > 0 && (_x + n) < (canvas.getWidth()))
-                        canvas.draw(_x + n, _y + i, sprite.atUnchecked(n, i));
-
+                    if (_x + n > 0 && (_x + n) < (canvas.getWidth())) {
+                        if (sprite.alphaAtUnchecked(n, i) > 210)
+                            canvas.draw(_x + n, _y + i, sprite.atUnchecked(n, i));
+                    }
                 }
             }
 
