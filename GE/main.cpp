@@ -5,6 +5,70 @@
 
 using namespace std;
 
+template <typename T>
+class node {
+public:
+    T data;
+    node* next;
+    node(T& d) {
+        data = d;
+    }
+};
+
+template <typename T>
+class myVector {
+    //template <typename T>
+    
+    T* data;
+    int size;
+public:
+
+    myVector() {
+        size = 0;
+        data = new T[10];
+        
+    }
+
+    ~myVector() {
+        delete[] data;
+    }
+
+    void push() {
+        
+    }
+
+};
+
+class entity {
+
+public:
+    GamesEngineeringBase::Image sprite;
+    int x;
+    int y;
+    void update(int inc, int yinc) {
+        x += inc;
+        y += yinc;
+    }
+    entity() {
+
+    }
+
+    void draw(GamesEngineeringBase::Window& canvas) {
+        for (unsigned int i = 0; i < sprite.height; i++) {
+            // bounds checking goes here
+            if (y + i > 0 && (y + i) < (canvas.getHeight())) {
+                for (unsigned int n = 0; n < sprite.width; n++) {
+                    if (x + n > 0 && (x + n) < (canvas.getWidth()))
+                        canvas.draw(x + n, y + i, sprite.atUnchecked(n, i));
+
+                }
+            }
+
+        }
+
+    }
+
+};
 
 class hero {
     GamesEngineeringBase::Image sprite;
@@ -42,6 +106,43 @@ public:
     int getX() { return x; }
     unsigned int getHeight() { return sprite.height; }
     unsigned int getWidth() { return sprite.width; }
+
+};
+
+const int emaxsize = 100;
+class enemy : public entity{
+    
+public:
+    enemy() {
+        sprite.load("Resources/L2.png");
+    }
+    void update(GamesEngineeringBase::Window& canvas, float dt) {
+        // towards player
+    }
+    
+};
+
+class enemyList {
+public:
+    enemy* sarray[emaxsize];
+    int currentSize = 0;
+    float timeElapsed = 0.f;
+    float timeThreshold = 3.f;
+    
+    enemyList() {
+
+    }
+
+    void generateEnemy(GamesEngineeringBase::Window& canvas, float dt) {
+        timeElapsed += dt;
+
+    }
+
+    void update(GamesEngineeringBase::Window& canvas, float dt) {
+        generateEnemy(canvas, dt);
+        // update every enemy
+
+    }
 
 };
 
@@ -128,6 +229,55 @@ public:
             }
         }
     }
+};
+
+class camera {
+public:
+    int leftbound = 1856;
+    int rightbound = -832;
+    int upperbound = 1728;
+    int lowerbound = -960;
+    
+    int x = 0;
+    int y = 0;
+    GamesEngineeringBase::Timer timer;
+    float dt;
+    int move;
+    
+
+    camera() {
+        
+    }
+
+    void updatePos(GamesEngineeringBase::Window& canvas) {
+        /*if (canvas.keyPressed(VK_ESCAPE)) break;*/
+        dt = timer.dt();
+        move = static_cast<int>((500.f * dt));
+        //cout << "move = " << move << endl;
+   
+        if (canvas.keyPressed('W')) y += move;
+        if (canvas.keyPressed('S')) y -= move;
+        if (canvas.keyPressed('A')) x += move;
+        if (canvas.keyPressed('D')) x -= move;
+         
+        // bound checking
+        // mapSize + player offset (half canvas size)
+        if (x > 1856) x = 1856;
+        if (x < -832) x = -832;
+        if (y > 1728) y = 1728;
+        if (y < -960) y = -960;
+        //cout << "x = " << x << " ";
+        //cout << "y = " << y << endl;
+    }
+
+    void draw(GamesEngineeringBase::Window& canvas, world1& w1, hero& h) {
+        w1.draw(canvas, x, y);
+        w1.draw(canvas, x - 1344, y); // splicing larger map 
+        w1.draw(canvas, x, y - 1344);
+        w1.draw(canvas, x - 1344, y - 1344);
+        h.draw(canvas);
+    }
+
 };
 
 const int maxSize = 100;
@@ -227,6 +377,8 @@ public:
 
 
 int main() {
+    enemy e;
+    node<enemy> newnode(e);
     srand(static_cast<unsigned int>(time(nullptr)));
     // Create a canvas window with dimensions 1024x768 and title "Example"
     GamesEngineeringBase::Window canvas;
@@ -235,12 +387,13 @@ int main() {
     bool running = true; // Variable to control the main loop's running state.
 
     // Timer object to manage time-based events, such as movement speed
-    GamesEngineeringBase::Timer timer;
+    //GamesEngineeringBase::Timer timer;
 
     //world w;
     world w("order.txt");
     hero h(canvas.getWidth() / 2, canvas.getHeight()/2);
     world1 w1("Resources/tiles1.txt");
+    camera c;
 
     int x = 0;
     int y = 0;
@@ -252,14 +405,17 @@ int main() {
         canvas.clear();
 
         bool alpha = false;
+        /*float dt = timer.dt();
+        int move = static_cast<int>((500.f * dt));*/
 
         if (canvas.keyPressed(VK_ESCAPE)) break;
-        if (canvas.keyPressed('W')) y += 1;
-        if (canvas.keyPressed('S')) y -= 1;
+        c.updatePos(canvas);
+        //if (canvas.keyPressed('W')) y += move;
+        //if (canvas.keyPressed('S')) y -= move;
         //if (canvas.keyPressed('A')) h.update(-2, 0);
         //if (canvas.keyPressed('D')) h.update(2, 0);
-        if (canvas.keyPressed('A')) x += 1;
-        if (canvas.keyPressed('D')) x -= 1;
+        /*if (canvas.keyPressed('A')) x += move;
+        if (canvas.keyPressed('D')) x -= move;*/
         //if (canvas.keyPressed('Q')) alpha = !alpha;
         // scroll vertically all the time
 
@@ -270,9 +426,11 @@ int main() {
             w.drawAlpha(canvas, y);
         else*/
         //w.draw(canvas, x, y);
-        w1.draw(canvas, x, y);
-        h.draw(canvas);
+        //w1.draw(canvas, x, y);
+        //w1.draw(canvas, x - 1344, y); // splicing larger map 
+        //h.draw(canvas);
         //w.collision(canvas, h, y);
+        c.draw(canvas, w1, h);
 
 
         // Display the frame on the screen. This must be called once the frame is finished in order to display the frame.
