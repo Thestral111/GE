@@ -1,0 +1,6 @@
+camera update -> world + enemy + projectile...
+move camera instead of moving map
+
+hero attack nearest enemy
+create a function that returns distance.
+change position in enemy.update(), not draw
