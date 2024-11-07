@@ -6,6 +6,9 @@
 
 using namespace std;
 
+const int canvasHeight = 768;
+const int canvasWidth = 1024;
+
 template <typename T>
 class node {
 public:
@@ -125,10 +128,13 @@ class enemy : public entity{
 public:
     float speed = 200.f;
     int move;
-    enemy() {
+    enemy(int cx, int cy) {
         sprite.load("Resources/L2.png");
-        x = rand() % 2688 - 1344;
-        y = rand() % 2688 - 1344;
+        do {
+            x = rand() % 2688 - 1344;
+            y = rand() % 2688 - 1344;
+        } while ((x>cx && x<cx+canvasWidth) && (y>cy && y<cy+canvasHeight));
+        
         cout << "pos: " << x << " " << y << endl;
     }
     void update(GamesEngineeringBase::Window& canvas, float dt, int px, int py) {
@@ -180,11 +186,11 @@ public:
 
     }
 
-    void generateEnemy(GamesEngineeringBase::Window& canvas, float dt) {
+    void generateEnemy(GamesEngineeringBase::Window& canvas, float dt, int cx, int cy) {
         timeElapsed += dt;
         if (currentSize < emaxsize) {
             if (timeElapsed > timeThreshold) { // create new plane
-                enemy* p = new enemy();
+                enemy* p = new enemy(cx, cy);
                 //  cout << "Created: " << currentSize << '\t' << timeThreshold << '\t' << dt << endl;
                 cout << "Created: " << currentSize << endl;
 
@@ -197,7 +203,7 @@ public:
     }
 
     void update(GamesEngineeringBase::Window& canvas, float dt, int cx, int cy) {
-        generateEnemy(canvas, dt);
+        generateEnemy(canvas, dt, cx, cy);
         int playerX = cx + canvas.getWidth() / 2;
         int playerY = cy + canvas.getHeight() / 2;
         for (unsigned int i = 0; i < currentSize; i++) {
@@ -217,6 +223,12 @@ public:
                 sarray[i]->draw(canvas, x, y);
         }
     }
+
+};
+
+class projectile : public entity {
+    int x = 200;
+    int y = 200;
 
 };
 
