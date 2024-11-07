@@ -2,7 +2,7 @@
 #include "GamesEngineeringBase.h" // Include the GamesEngineeringBase header
 #include <fstream>
 #include <sstream>
-#include <cmath>
+//#include <cmath>
 
 using namespace std;
 
@@ -69,6 +69,15 @@ public:
 
     }
 
+    bool collide(entity& p) {
+        int dx = x - p.x;
+        int dy = y - p.y;
+
+        float radius = static_cast<float>(sprite.width / 3);
+        float d = sqrtf(dx * dx + dy * dy); // can do without sqrtf also
+        return d < 2.f * radius;
+    }
+
 };
 
 class hero {
@@ -129,7 +138,7 @@ public:
         float dist = sqrt(xOffset * xOffset + yOffset * yOffset);
         //cout << dist << endl;
         move = static_cast<int>((speed * dt));
-        if (dist > 5.f) {
+        if (dist > 50.f) {
             x += xOffset / dist * move;
             y += yOffset / dist * move;
         }
@@ -479,18 +488,12 @@ int main() {
         if (canvas.keyPressed(VK_ESCAPE)) break;
         c.updatePos(canvas, dt);
         el.update(canvas, dt, -(c.x), -(c.y));
-        //if (canvas.keyPressed('W')) y += move;
-        //if (canvas.keyPressed('S')) y -= move;
-        //if (canvas.keyPressed('A')) h.update(-2, 0);
-        //if (canvas.keyPressed('D')) h.update(2, 0);
-        /*if (canvas.keyPressed('A')) x += move;
-        if (canvas.keyPressed('D')) x -= move;*/
+        
         //if (canvas.keyPressed('Q')) alpha = !alpha;
         // scroll vertically all the time
 
         //t.draw(canvas, y++);
-        //y += 2;
-        // w.draw(canvas, y);
+        
         /*if (alpha)
             w.drawAlpha(canvas, y);
         else*/
