@@ -103,7 +103,7 @@ public:
         y += yinc;
     }
     hero(int _x, int _y) {
-        sprite.load("Resources/L.png");
+        sprite.load("Resources/mage2.png");
         x = _x - sprite.width / 2; // centre
         y = _y - sprite.height / 2;
     }
@@ -132,14 +132,14 @@ public:
 
 };
 
-const int emaxsize = 100;
+const int emaxsize = 200;
 class enemy : public entity{
     
 public:
     float speed = 200.f;
     int move;
     enemy(int cx, int cy) {
-        sprite.load("Resources/L2.png");
+        sprite.load("Resources/bat.png");
         do {
             x = rand() % 2688 - 1344;
             y = rand() % 2688 - 1344;
@@ -298,7 +298,7 @@ public:
 
         int move = static_cast<int>((600.f * dt));
         if (!collide(*e)) {
-            // destroy and damage
+            
             x += xOffset / dist * move;
             y += yOffset / dist * move;
         }
