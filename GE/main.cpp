@@ -46,6 +46,7 @@ public:
 class entity {
 
 public:
+    int health = 10;
     GamesEngineeringBase::Image sprite;
     int x;
     int y;
@@ -91,12 +92,22 @@ public:
         return d < 2.f * radius;
     }
 
+    void takeDamage() {
+        health -= 1;
+        cout << "taking damage\n";
+        if (health <= 0) {
+            cout << "dead\n";
+        }
+    }
+
 };
 
-class hero {
+class hero : public entity {
     GamesEngineeringBase::Image sprite;
     int x;
     int y;
+    int worldX, worldY;
+    //int health;
 public:
     void update(int inc, int yinc) {
         x += inc;
@@ -106,7 +117,17 @@ public:
         sprite.load("Resources/mage2.png");
         x = _x - sprite.width / 2; // centre
         y = _y - sprite.height / 2;
+        health = 10;
     }
+    void updateWorldPos(int px, int py) {
+        worldX = px;
+        worldY = py;
+    }
+
+    void takingDamage() {
+
+    }
+
     void draw(GamesEngineeringBase::Window& canvas) {
         //unsigned int y = (canvas.getHeight()) - (sprite.height); // fixed height
         for (unsigned int i = 0; i < sprite.height; i++)
@@ -139,13 +160,46 @@ public:
     float speed = 200.f;
     int move;
     enemy(int cx, int cy) {
-        sprite.load("Resources/bat.png");
+        int enemyNo = rand() % 4 + 1;
+        switch (enemyNo)
+        {
+        case 1:
+            // skeleton
+            sprite.load("Resources/skeleton.png");
+            health = 2;
+            speed = 150.f;
+            break;
+        case 2:
+            // spirit
+            sprite.load("Resources/spirit.png");
+            health = 1;
+            speed = 200.f;
+            break;
+        case 3:
+            // slime
+            sprite.load("Resources/slimeSmall.png");
+            health = 2;
+            speed = 120.f;
+            break;
+        case 4:
+            // bat
+            sprite.load("Resources/bat.png");
+            health = 1;
+            speed = 250.f;
+            break;
+        default:
+            sprite.load("Resources/skeleton.png");
+            health = 2;
+            speed = 150.f;
+            break;
+        }
+        //sprite.load("Resources/bat.png");
         do {
             x = rand() % 2688 - 1344;
             y = rand() % 2688 - 1344;
         } while ((x>cx && x<cx+canvasWidth) && (y>cy && y<cy+canvasHeight));
         
-        cout << "pos: " << x << " " << y << endl;
+        //cout << "pos: " << x << " " << y << endl;
     }
     void update(GamesEngineeringBase::Window& canvas, float dt, int px, int py) {
         // towards player
@@ -220,13 +274,18 @@ public:
         }
     }
 
-    void update(GamesEngineeringBase::Window& canvas, float dt, int cx, int cy) {
+    void update(GamesEngineeringBase::Window& canvas, float dt, int cx, int cy, hero& h) {
         generateEnemy(canvas, dt, cx, cy);
         int playerX = cx + canvas.getWidth() / 2;
         int playerY = cy + canvas.getHeight() / 2;
         for (unsigned int i = 0; i < currentSize; i++) {
             if (sarray[i] != nullptr) {
                 sarray[i]->update(canvas, dt, playerX, playerY);
+                if (sarray[i]->health <= 0) {
+                    enemy* temp = sarray[i];
+                    sarray[i] = nullptr;
+                    delete temp;
+                }
             }
         }
         
@@ -259,19 +318,21 @@ public:
         //int ex, ey;
         int minDist = 10000;
         for (unsigned int i = 0; i < el.currentSize; i++) {
-            int currentX, currentY;
-            int currentDist;
-            currentX = el.sarray[i]->x;
-            currentY = el.sarray[i]->y;
-            int xOffset = currentX - x;
-            int yOffset = currentY - y;
-            currentDist = sqrt(xOffset * xOffset + yOffset * yOffset);
-            if (currentDist < minDist) {
-                minDist = currentDist;
-                ex = currentX;
-                ey = currentY;
-                e = (el.sarray[i]);
+            if (el.sarray[i] != nullptr) {
+                int currentX, currentY;
+                int currentDist;
+                currentX = el.sarray[i]->x;
+                currentY = el.sarray[i]->y;
+                int xOffset = currentX - x;
+                int yOffset = currentY - y;
+                currentDist = sqrt(xOffset * xOffset + yOffset * yOffset);
+                if (currentDist < minDist) {
+                    minDist = currentDist;
+                    ex = currentX;
+                    ey = currentY;
+                    e = (el.sarray[i]);
 
+                }
             }
         }
     }
@@ -435,15 +496,15 @@ public:
         
     }
 
-    void getPlayerPos(GamesEngineeringBase::Window& canvas) {
+    void getPlayerPos(GamesEngineeringBase::Window& canvas, hero& h) {
         px = -x + canvas.getWidth() / 2;
         py = -y + canvas.getHeight() / 2;
     }
 
-    void updatePos(GamesEngineeringBase::Window& canvas, float dt, enemyList& el) {
+    void updatePos(GamesEngineeringBase::Window& canvas, float dt, enemyList& el, hero& h) {
         /*if (canvas.keyPressed(VK_ESCAPE)) break;*/
         //dt = timer.dt();
-        getPlayerPos(canvas);
+        getPlayerPos(canvas, h);
         move = static_cast<int>((500.f * dt));
         //cout << "move = " << move << endl;
    
@@ -477,6 +538,7 @@ public:
             if (parray[i] != nullptr) {
                 parray[i]->update(canvas, dt);
                 if (parray[i]->collide(*(parray[i]->e))) {
+                    parray[i]->e->takeDamage();
                     entity* p = parray[i];
                     parray[i] = nullptr;
                     delete p;
@@ -635,8 +697,8 @@ int main() {
         //int move = static_cast<int>((500.f * dt));
 
         if (canvas.keyPressed(VK_ESCAPE)) break;
-        c.updatePos(canvas, dt, el);
-        el.update(canvas, dt, -(c.x), -(c.y));
+        c.updatePos(canvas, dt, el, h);
+        el.update(canvas, dt, -(c.x), -(c.y), h);
         
         //if (canvas.keyPressed('Q')) alpha = !alpha;
         // scroll vertically all the time
