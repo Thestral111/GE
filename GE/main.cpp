@@ -57,13 +57,14 @@ public:
 
     }
 
-    void draw(GamesEngineeringBase::Window& canvas) {
+    void draw(GamesEngineeringBase::Window& canvas, int x, int y) {
         for (unsigned int i = 0; i < sprite.height; i++) {
             // bounds checking goes here
             if (y + i > 0 && (y + i) < (canvas.getHeight())) {
                 for (unsigned int n = 0; n < sprite.width; n++) {
                     if (x + n > 0 && (x + n) < (canvas.getWidth()))
-                        canvas.draw(x + n, y + i, sprite.atUnchecked(n, i));
+                        if (sprite.alphaAtUnchecked(n, i) > 10)
+                            canvas.draw(x + n, y + i, sprite.atUnchecked(n, i));
 
                 }
             }
@@ -77,6 +78,15 @@ public:
         int dy = y - p.y;
 
         float radius = static_cast<float>(sprite.width / 3);
+        float d = sqrtf(dx * dx + dy * dy); // can do without sqrtf also
+        return d < 2.f * radius;
+    }
+
+    bool collide(int px, int py) {
+        int dx = x - px;
+        int dy = y - py;
+
+        float radius = static_cast<float>(sprite.width / 3) + 2.f;
         float d = sqrtf(dx * dx + dy * dy); // can do without sqrtf also
         return d < 2.f * radius;
     }
@@ -143,8 +153,16 @@ public:
         int yOffset = py - y;
         float dist = sqrt(xOffset * xOffset + yOffset * yOffset);
         //cout << dist << endl;
+        //move = static_cast<int>((speed * dt));
+        //if (dist > 50.f) {
+        //    x += xOffset / dist * move;
+        //    y += yOffset / dist * move;
+        //    //x -= (sprite.width / 2);
+        //    //y -= (sprite.height / 2);
+        //}
+
         move = static_cast<int>((speed * dt));
-        if (dist > 50.f) {
+        if (!collide(px, py)) {
             x += xOffset / dist * move;
             y += yOffset / dist * move;
         }
@@ -227,9 +245,84 @@ public:
 };
 
 class projectile : public entity {
-    int x = 200;
-    int y = 200;
+public:
+    int x = 500;
+    int y = 500;
+    int ex = 0;
+    int ey = 0;
+    entity *e;
 
+    projectile(int px, int py, enemyList el) {
+        sprite.load("Resources/round_bullet_sprite.png");
+        x = px;
+        y = py;
+        //int ex, ey;
+        int minDist = 10000;
+        for (unsigned int i = 0; i < el.currentSize; i++) {
+            int currentX, currentY;
+            int currentDist;
+            currentX = el.sarray[i]->x;
+            currentY = el.sarray[i]->y;
+            int xOffset = currentX - x;
+            int yOffset = currentY - y;
+            currentDist = sqrt(xOffset * xOffset + yOffset * yOffset);
+            if (currentDist < minDist) {
+                minDist = currentDist;
+                ex = currentX;
+                ey = currentY;
+                e = (el.sarray[i]);
+
+            }
+        }
+    }
+
+    void generateProjectile(GamesEngineeringBase::Window& canvas, enemyList el) {
+
+    }
+
+    bool collide(entity& entity) {
+        int dx = x - entity.x;
+        int dy = y - entity.y;
+
+        float radius = 20.f;
+        float d = sqrtf(dx * dx + dy * dy); // can do without sqrtf also
+        return d < 2.f * radius;
+    }
+    
+    void update(GamesEngineeringBase::Window& canvas, float dt) {
+
+        int xOffset = e->x - x;
+        int yOffset = e->y - y;
+        float dist = sqrt(xOffset * xOffset + yOffset * yOffset);
+        
+
+        int move = static_cast<int>((600.f * dt));
+        if (!collide(*e)) {
+            // destroy and damage
+            x += xOffset / dist * move;
+            y += yOffset / dist * move;
+        }
+        
+    }
+
+    void draw(GamesEngineeringBase::Window& canvas, int _x, int _y) {
+        _x += x;
+        _y += y;
+        _x -= (sprite.width / 2);
+        _y -= (sprite.height / 2);
+        for (unsigned int i = 0; i < sprite.height; i++) {
+            // bounds checking goes here
+            if (_y + i > 0 && (_y + i) < (canvas.getHeight())) {
+                for (unsigned int n = 0; n < sprite.width; n++) {
+                    if (_x + n > 0 && (_x + n) < (canvas.getWidth())) {
+                        if (sprite.alphaAtUnchecked(n, i) > 210)
+                            canvas.draw(_x + n, _y + i, sprite.atUnchecked(n, i));
+                    }
+                }
+            }
+
+        }
+    }
 };
 
 
@@ -326,18 +419,31 @@ public:
     
     int x = 0;
     int y = 0;
+    int px = 0;
+    int py = 0;
     GamesEngineeringBase::Timer timer;
     //float dt;
     int move;
+    //hero h;
+    projectile* parray[emaxsize];
+    float timeElapsed = 0.f;
+    float timeThreshold = 3.f;
+    int currentSize = 0;
     
 
     camera() {
         
     }
 
-    void updatePos(GamesEngineeringBase::Window& canvas, float dt) {
+    void getPlayerPos(GamesEngineeringBase::Window& canvas) {
+        px = -x + canvas.getWidth() / 2;
+        py = -y + canvas.getHeight() / 2;
+    }
+
+    void updatePos(GamesEngineeringBase::Window& canvas, float dt, enemyList& el) {
         /*if (canvas.keyPressed(VK_ESCAPE)) break;*/
         //dt = timer.dt();
+        getPlayerPos(canvas);
         move = static_cast<int>((500.f * dt));
         //cout << "move = " << move << endl;
    
@@ -354,8 +460,34 @@ public:
         if (y < -960) y = -960;
         //cout << "x = " << x << " ";
         //cout << "y = " << y << endl;
+        timeElapsed += dt;
+        if (currentSize < emaxsize) {
+            if (timeElapsed > timeThreshold) { // create new plane
+                projectile* p = new projectile(px, py , el);
+                //  cout << "Created: " << currentSize << '\t' << timeThreshold << '\t' << dt << endl;
+                cout << " projectile created: " << currentSize << endl;
+
+                parray[currentSize++] = p;
+                timeElapsed = 0.f;
+                //timeThreshold -= 0.2f;
+                //timeThreshold = max(0.2f, timeThreshold);
+            }
+        }
+        for (int i = 0; i < currentSize; i++) {
+            if (parray[i] != nullptr) {
+                parray[i]->update(canvas, dt);
+                if (parray[i]->collide(*(parray[i]->e))) {
+                    entity* p = parray[i];
+                    parray[i] = nullptr;
+                    delete p;
+                }
+            }
+            
+        }
         
     }
+
+    
 
     void draw(GamesEngineeringBase::Window& canvas, world1& w1, hero& h, enemyList& el) {
         w1.draw(canvas, x, y);
@@ -364,6 +496,10 @@ public:
         w1.draw(canvas, x - 1344, y - 1344);
         h.draw(canvas);
         el.draw(canvas, x, y);
+        for (int i = 0; i < currentSize; i++) {
+            if (parray[i] != nullptr)
+                parray[i]->draw(canvas, x, y);
+        }
     }
 
 };
@@ -483,6 +619,7 @@ int main() {
     world1 w1("Resources/tiles1.txt");
     enemyList el;
     camera c;
+    //projectile p(0 , 0, el);
 
     int x = 0;
     int y = 0;
@@ -498,7 +635,7 @@ int main() {
         //int move = static_cast<int>((500.f * dt));
 
         if (canvas.keyPressed(VK_ESCAPE)) break;
-        c.updatePos(canvas, dt);
+        c.updatePos(canvas, dt, el);
         el.update(canvas, dt, -(c.x), -(c.y));
         
         //if (canvas.keyPressed('Q')) alpha = !alpha;
@@ -515,6 +652,7 @@ int main() {
         //h.draw(canvas);
         //w.collision(canvas, h, y);
         c.draw(canvas, w1, h, el);
+        //p.draw(canvas);
 
 
         // Display the frame on the screen. This must be called once the frame is finished in order to display the frame.
