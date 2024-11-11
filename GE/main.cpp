@@ -107,6 +107,8 @@ class hero : public entity {
     int x;
     int y;
     int worldX, worldY;
+    float elapsedTime = 0.f;
+    float timeThreshold = 1.0f;
     //int health;
 public:
     void update(int inc, int yinc) {
@@ -117,16 +119,25 @@ public:
         sprite.load("Resources/mage2.png");
         x = _x - sprite.width / 2; // centre
         y = _y - sprite.height / 2;
-        health = 10;
+        health = 3;
     }
-    void updateWorldPos(int px, int py) {
+    void updateWorldPos(int px, int py, float dt) {
         worldX = px;
         worldY = py;
+        elapsedTime += dt;
+    }
+    void takeDamage() {
+        if (elapsedTime > timeThreshold) {
+            health--;
+            elapsedTime = 0.f;
+            if (health <= 0) {
+                cout << "hero dead\n";
+            }
+        }
+        
     }
 
-    void takingDamage() {
-
-    }
+    
 
     void draw(GamesEngineeringBase::Window& canvas) {
         //unsigned int y = (canvas.getHeight()) - (sprite.height); // fixed height
@@ -159,6 +170,8 @@ class enemy : public entity{
 public:
     float speed = 200.f;
     int move;
+    float elapsedTime = 0.f;
+    float timeThreshold = 1.0f;
     enemy(int cx, int cy) {
         int enemyNo = rand() % 4 + 1;
         switch (enemyNo)
@@ -201,7 +214,7 @@ public:
         
         //cout << "pos: " << x << " " << y << endl;
     }
-    void update(GamesEngineeringBase::Window& canvas, float dt, int px, int py) {
+    void update(GamesEngineeringBase::Window& canvas, float dt, int px, int py, hero& h) {
         // towards player
         int xOffset = px - x;
         int yOffset = py - y;
@@ -216,7 +229,14 @@ public:
         //}
 
         move = static_cast<int>((speed * dt));
-        if (!collide(px, py)) {
+        elapsedTime += dt;
+        if (collide(px, py)) {
+            if (elapsedTime > timeThreshold) {
+                h.takeDamage();
+            }
+
+        }
+        else {
             x += xOffset / dist * move;
             y += yOffset / dist * move;
         }
@@ -280,7 +300,7 @@ public:
         int playerY = cy + canvas.getHeight() / 2;
         for (unsigned int i = 0; i < currentSize; i++) {
             if (sarray[i] != nullptr) {
-                sarray[i]->update(canvas, dt, playerX, playerY);
+                sarray[i]->update(canvas, dt, playerX, playerY, h);
                 if (sarray[i]->health <= 0) {
                     enemy* temp = sarray[i];
                     sarray[i] = nullptr;
@@ -473,6 +493,7 @@ public:
 
 class camera {
 public:
+    GamesEngineeringBase::Image sprite;
     int leftbound = 1856;
     int rightbound = -832;
     int upperbound = 1728;
@@ -505,6 +526,7 @@ public:
         /*if (canvas.keyPressed(VK_ESCAPE)) break;*/
         //dt = timer.dt();
         getPlayerPos(canvas, h);
+        h.updateWorldPos(px, py, dt);
         move = static_cast<int>((500.f * dt));
         //cout << "move = " << move << endl;
    
@@ -561,6 +583,24 @@ public:
         for (int i = 0; i < currentSize; i++) {
             if (parray[i] != nullptr)
                 parray[i]->draw(canvas, x, y);
+        }
+    }
+
+    void drawGameOver(GamesEngineeringBase::Window& canvas) {
+        sprite.load("Resources/game_over_sprite.png");
+        int centerX = canvas.getWidth() / 2 - sprite.width/2;
+        int centerY = canvas.getHeight() / 2 - sprite.height/2;
+        for (unsigned int i = 0; i < sprite.height; i++) {
+            // bounds checking goes here
+            if (centerY + i > 0 && (centerY + i) < (canvas.getHeight())) {
+                for (unsigned int n = 0; n < sprite.width; n++) {
+                    if (centerX + n > 0 && (centerX + n) < (canvas.getWidth()))
+                        if (sprite.alphaAtUnchecked(n, i) > 10)
+                            canvas.draw(centerX + n, centerY + i, sprite.atUnchecked(n, i));
+
+                }
+            }
+
         }
     }
 
@@ -665,6 +705,7 @@ public:
 int main() {
     //enemy e;
     //node<enemy> newnode(e);
+    int windowNo = 1;
     srand(static_cast<unsigned int>(time(nullptr)));
     // Create a canvas window with dimensions 1024x768 and title "Example"
     GamesEngineeringBase::Window canvas;
@@ -696,24 +737,33 @@ int main() {
         float dt = timer.dt();
         //int move = static_cast<int>((500.f * dt));
 
-        if (canvas.keyPressed(VK_ESCAPE)) break;
-        c.updatePos(canvas, dt, el, h);
-        el.update(canvas, dt, -(c.x), -(c.y), h);
-        
-        //if (canvas.keyPressed('Q')) alpha = !alpha;
-        // scroll vertically all the time
+        switch (windowNo)
+        {
+        case 1:
+            c.updatePos(canvas, dt, el, h);
+            el.update(canvas, dt, -(c.x), -(c.y), h);
 
-        //t.draw(canvas, y++);
+            c.draw(canvas, w1, h, el);
+            canvas.present();
+            if (h.health <= 0) {
+                windowNo = 2;
+            }
+            break;
+
+        case 2:
+            c.drawGameOver(canvas);
+            break;
+        case 3:
+
+        default:
+            break;
+        }
+
+        if (canvas.keyPressed(VK_ESCAPE)) break;
         
-        /*if (alpha)
-            w.drawAlpha(canvas, y);
-        else*/
-        //w.draw(canvas, x, y);
-        //w1.draw(canvas, x, y);
-        //w1.draw(canvas, x - 1344, y); // splicing larger map 
-        //h.draw(canvas);
-        //w.collision(canvas, h, y);
-        c.draw(canvas, w1, h, el);
+        
+        
+        //c.draw(canvas, w1, h, el);
         //p.draw(canvas);
 
 
