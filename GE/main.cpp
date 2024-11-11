@@ -11,53 +11,14 @@ const int canvasWidth = 1024;
 
 int score = 0;
 
+// score increases after eliminating any enemy
 void scoreInc() {
     score++;
 }
 
-int roundToInt(float n) {
-    if (n > 0) {
 
-    }
-    return 0;
-}
-float a = -2.5;
-int b = round(a);
 
-template <typename T>
-class node {
-public:
-    T data;
-    node* next;
-    node(T& d) {
-        data = d;
-    }
-};
-
-template <typename T>
-class myVector {
-    //template <typename T>
-    
-    T* data;
-    int size;
-public:
-
-    myVector() {
-        size = 0;
-        data = new T[10];
-        
-    }
-
-    ~myVector() {
-        delete[] data;
-    }
-
-    void push() {
-        
-    }
-
-};
-
+// Entity class includes all the characters and projectile.
 class entity {
 
 public:
@@ -89,6 +50,7 @@ public:
 
     }
 
+    // check collision
     bool collide(entity& p) {
         int dx = x - p.x;
         int dy = y - p.y;
@@ -107,6 +69,7 @@ public:
         return d < 2.f * radius;
     }
 
+    // damage after collision
     void takeDamage() {
         health -= 1;
         //cout << "taking damage\n";
@@ -122,6 +85,7 @@ public:
 
 };
 
+// hero class is the player
 class hero : public entity {
     GamesEngineeringBase::Image sprite;
     int x;
@@ -166,7 +130,7 @@ public:
         {
             for (unsigned int n = 0; n < sprite.width; n++)
             {
-                //if ((x + n) >= 0 && (x + n) < canvas.getWidth() && (y + i) >= 0 && (y + i) < canvas.getHeight()) 
+                
                 if ((x + n) >= 0 && (x + n) < canvas.getWidth()) // y is not needed to be checked because it is constant - in theory we never go out of bounds to check x either
                 {
                     if (sprite.alphaAtUnchecked(n, i) > 210)
@@ -186,15 +150,19 @@ public:
 };
 
 const int emaxsize = 200;
+
+// enemy class manages the four types of NPCs
 class enemy : public entity{
     
 public:
     float speed = 200.f;
-    //int health;
+    
     int move;
     float elapsedTime = 0.f;
     float timeThreshold = 1.0f;
+
     enemy(int cx, int cy, int mapNo) {
+        // enemy is initialised randomly among four types
         int enemyNo = rand() % 4 + 1;
         switch (enemyNo)
         {
@@ -228,7 +196,9 @@ public:
             speed = 150.f;
             break;
         }
-        //sprite.load("Resources/bat.png");
+
+        // randomly generated outside camera view
+        // mapNo indicates finite or infinite map which leads to different position
         do {
             if (mapNo == 1) {
                 x = rand() % 2688 - 1344;
@@ -249,16 +219,11 @@ public:
         int xOffset = px - x;
         int yOffset = py - y;
         float dist = sqrt(xOffset * xOffset + yOffset * yOffset);
-        //cout << dist << endl;
-        //move = static_cast<int>((speed * dt));
-        //if (dist > 50.f) {
-        //    x += xOffset / dist * move;
-        //    y += yOffset / dist * move;
-        //    //x -= (sprite.width / 2);
-        //    //y -= (sprite.height / 2);
-        //}
-
+        
         move = static_cast<int>((speed * dt));
+
+        // collision between hero and enemy
+        // leading to a damage to hero health (has cool down to avoid hero die in one sec)
         elapsedTime += dt;
         if (collide(px, py)) {
             if (elapsedTime > timeThreshold) {
@@ -274,18 +239,10 @@ public:
 
     }
 
-    /*void takeDamage() {
-        health--;
-        cout << "taking damage\n";
-        cout << "health: " << health << endl;
-        if (health <= 0) {
-            cout << "dead\n";
-        }
-    }*/
+    
 
     void draw(GamesEngineeringBase::Window& canvas, int _x, int _y) {
-        //x += _x;
-        //y += _y;
+        // offset to let enemy stay on the map
         _x += x;
         _y += y;
         _x -= (sprite.width / 2);
@@ -308,6 +265,7 @@ public:
     
 };
 
+// Use an array of enemy pointer to manage all the enemies
 class enemyList {
 public:
     enemy* sarray[emaxsize];
@@ -321,6 +279,7 @@ public:
     }
 
     void generateEnemy(GamesEngineeringBase::Window& canvas, float dt, int cx, int cy, int mapNo) {
+        // frequency increase over time
         timeElapsed += dt;
         totalTime += dt;
         if (totalTime <= 30.f) {
@@ -334,15 +293,14 @@ public:
         }
 
         if (currentSize < emaxsize) {
-            if (timeElapsed > timeThreshold) { // create new plane
+            if (timeElapsed > timeThreshold) { // create new enemy
                 enemy* p = new enemy(cx, cy, mapNo);
                 //  cout << "Created: " << currentSize << '\t' << timeThreshold << '\t' << dt << endl;
                 //cout << "Created: " << currentSize << endl;
 
                 sarray[currentSize++] = p;
                 timeElapsed = 0.f;
-                //timeThreshold -= 0.2f;
-                //timeThreshold = max(0.2f, timeThreshold);
+                
             }
         }
     }
@@ -351,9 +309,11 @@ public:
         generateEnemy(canvas, dt, cx, cy, mapNo);
         int playerX = cx + canvas.getWidth() / 2;
         int playerY = cy + canvas.getHeight() / 2;
+        // update all enemies towards player
         for (unsigned int i = 0; i < currentSize; i++) {
             if (sarray[i] != nullptr) {
                 sarray[i]->update(canvas, dt, playerX, playerY, h);
+                // check for dead enemy
                 if (sarray[i]->health <= 0) {
                     enemy* temp = sarray[i];
                     sarray[i] = nullptr;
@@ -362,13 +322,16 @@ public:
             }
         }
         
-        // update every enemy
+        
 
     }
 
+    // AOE attack of hero goes here
     void takeAOE() {
+        // max 5 enemy
         entity* topN[5];
         int count = 0;
+        // find the top 5 health enemy
         for (unsigned int i = 0; i < currentSize; i++) {
             if (sarray[i] != nullptr) {
                 if (count < 5) {
@@ -390,6 +353,7 @@ public:
             }
         }
         cout << "count = " << count << endl;
+        // deal 2 point of damage to them
         for (unsigned int i = 0; i < count; i++) {
             if (topN[i] != nullptr)
                 topN[i]->takeDamage();
@@ -408,6 +372,7 @@ public:
 
 };
 
+// projectiles shoot by hero
 class projectile : public entity {
 public:
     int x = 500;
@@ -420,7 +385,7 @@ public:
         sprite.load("Resources/round_bullet_sprite.png");
         x = px;
         y = py;
-        //int ex, ey;
+        // find nearest enemy
         int minDist = 10000;
         for (unsigned int i = 0; i < el.currentSize; i++) {
             if (el.sarray[i] != nullptr) {
@@ -442,10 +407,8 @@ public:
         }
     }
 
-    void generateProjectile(GamesEngineeringBase::Window& canvas, enemyList el) {
-
-    }
-
+    
+    // overwrite collide() to take pointer as parameter
     bool collide(entity* entity) {
         if (entity == nullptr) {
             return true;
@@ -458,6 +421,7 @@ public:
         return d < 2.f * radius;
     }
     
+    // projectile move towards enemy 
     void update(GamesEngineeringBase::Window& canvas, float dt) {
         if (e != nullptr) {
             int xOffset = e->x - x;
@@ -496,7 +460,7 @@ public:
     }
 };
 
-
+// tile based method to load map
 class tile {
     GamesEngineeringBase::Image sprite;
 public:
@@ -523,22 +487,8 @@ public:
     GamesEngineeringBase::Image& getSprite() { return sprite; }
 };
 
-const unsigned int tileNum = 6;
-class tileSet {
-    tile tiles[tileNum];
-    unsigned int size = tileNum;
-public:
-    tileSet() {}
-    void load(string s = "") {
-        for (unsigned int i = 0; i < size; i++) {
-            string filename;
-            filename = "Resources/" + s + to_string(i) + ".png";
-            tiles[i].load(filename);
-        }
-    }
-    tile& operator[](unsigned int index) { return tiles[index]; }
-};
 
+// use a 2d array to organize the tiles to form the map
 class world1 {
 public:
     tile tiles[42][42];
@@ -548,15 +498,15 @@ public:
         string map[42][42];
         string line;
         string tilename;
-        //tile tiles[42][42];
-        int i = 0;
         
+        int i = 0;
+        // read line from file
         while (getline(infile, line)) {
             stringstream ss(line);
             string number;
             int j = 0;
-            //cout << "i = " << i << endl;
-
+            
+            // use sstream to handle the string and convert into array
             while (getline(ss, number, ',')) {
                 //cout << "j = " << j << endl;
                 map[i][j] = number;
@@ -572,6 +522,7 @@ public:
         
 
     }
+
     void draw(GamesEngineeringBase::Window& canvas, int x, int y) {
         for (int i = 0; i < 42; i++) {
             for (int j = 0; j < 42; j++) {
@@ -581,6 +532,8 @@ public:
     }
 };
 
+// the virtual camera area with hero in the center
+// camera class manages all the things generated and drawed inside the camera view.
 class camera {
 public:
     GamesEngineeringBase::Image spriteOver;
@@ -608,15 +561,18 @@ public:
         
     }
 
+    // calculate the player position inside the map
     void getPlayerPos(GamesEngineeringBase::Window& canvas, hero& h) {
         px = -x + canvas.getWidth() / 2;
         py = -y + canvas.getHeight() / 2;
     }
 
+    // update projectiles emitted from the center of view (player)
     void updateProjectile(GamesEngineeringBase::Window& canvas, float dt, enemyList& el) {
+        // emit projectile every 2.5s
         timeElapsed += dt;
         if (currentSize < emaxsize) {
-            if (timeElapsed > timeThreshold) { // create new plane
+            if (timeElapsed > timeThreshold) { 
                 projectile* p = new projectile(px, py, el);
                 //  cout << "Created: " << currentSize << '\t' << timeThreshold << '\t' << dt << endl;
                 //cout << " projectile created: " << currentSize << endl;
@@ -627,6 +583,9 @@ public:
                 //timeThreshold = max(0.2f, timeThreshold);
             }
         }
+
+        // deal damage to enemy uppon collision
+        // enemy dies when health to 0
         for (int i = 0; i < currentSize; i++) {
             if (parray[i] != nullptr) {
                 parray[i]->update(canvas, dt);
@@ -642,14 +601,14 @@ public:
         }
     }
 
+    // update camera
     void updatePos(GamesEngineeringBase::Window& canvas, float dt, enemyList& el, hero& h) {
-        /*if (canvas.keyPressed(VK_ESCAPE)) break;*/
-        //dt = timer.dt();
+        
         getPlayerPos(canvas, h);
         h.updateWorldPos(px, py, dt);
         move = static_cast<int>((500.f * dt));
-        //cout << "move = " << move << endl;
-   
+        
+        // x, y of camera is used to draw the position of map
         if (canvas.keyPressed('W')) y += move;
         if (canvas.keyPressed('S')) y -= move;
         if (canvas.keyPressed('A')) x += move;
@@ -667,6 +626,7 @@ public:
         
     }
 
+    // infinite map version of camera, whithout bound checking
     void updateInfinite(GamesEngineeringBase::Window& canvas, float dt, enemyList& el, hero& h) {
         /*if (canvas.keyPressed(VK_ESCAPE)) break;*/
         //dt = timer.dt();
@@ -681,17 +641,15 @@ public:
         if (canvas.keyPressed('D')) x -= move;
 
         // no bound checking
-        // mapSize + player offset (half canvas size)
         
-        //cout << "x = " << x << " ";
-        //cout << "y = " << y << endl;
         updateProjectile(canvas, dt, el);
 
     }
 
     
-
+    // draw all the things including map and characters
     void draw(GamesEngineeringBase::Window& canvas, world1& w1, hero& h, enemyList& el) {
+        // form a larger map
         w1.draw(canvas, x, y);
         w1.draw(canvas, x - 1344, y); // splicing larger map 
         w1.draw(canvas, x, y - 1344);
@@ -704,6 +662,8 @@ public:
         }
     }
 
+    // infinite version of draw
+    // always draw the 4 pieces of map around player, so map is infinite
     void drawInfinite(GamesEngineeringBase::Window& canvas, world1& w1, hero& h, enemyList& el) {
         int xOffset = round((float)px / 1344.f);
         int yOffset = round((float)py / 1344.f);
@@ -720,21 +680,8 @@ public:
         }
     }
 
-    //void drawSprite(GamesEngineeringBase::Window& canvas, int x, int y, GamesEngineeringBase::Image sprite) {
-    //    for (unsigned int i = 0; i < sprite.height; i++) {
-    //        // bounds checking goes here
-    //        if (y + i > 0 && (y + i) < (canvas.getHeight())) {
-    //            for (unsigned int n = 0; n < sprite.width; n++) {
-    //                if (x + n > 0 && (x + n) < (canvas.getWidth()))
-    //                    if (sprite.alphaAtUnchecked(n, i) > 10)
-    //                        canvas.draw(x + n, y + i, sprite.atUnchecked(n, i));
-
-    //            }
-    //        }
-
-    //    }
-    //}
-
+    
+    // game over screen when hero dead
     void drawGameOver(GamesEngineeringBase::Window& canvas) {
         spriteOver.load("Resources/game_over_sprite.png");
         int centerX = canvas.getWidth() / 2 - spriteOver.width/2;
@@ -758,12 +705,10 @@ public:
 };
 
 
-//int getFPS() {
-//
-//}
+
 
 int main() {
-    
+    // first choose from 2 maps using terminal input
     int windowNo = 1;
     int input = 0;
     cout << "GE survivor game\n";
@@ -783,7 +728,7 @@ int main() {
     // Timer object to manage time-based events, such as movement speed
     GamesEngineeringBase::Timer timer;
 
-    
+    // initialize classes
     hero h(canvas.getWidth() / 2, canvas.getHeight()/2);
     world1 w1("Resources/tiles1.txt");
     enemyList el;
@@ -809,11 +754,12 @@ int main() {
         bool alpha = false;
         float dt = timer.dt();
         cd += dt;
-        //int move = static_cast<int>((500.f * dt));
-
+        
+        // switch to determine which window/map is now
         switch (windowNo)
         {
         case 1:
+            // finite map
             c.updatePos(canvas, dt, el, h);
             el.update(canvas, dt, -(c.x), -(c.y), h, windowNo);
             if (canvas.keyPressed('E') && cd > 3.f) {
@@ -822,10 +768,12 @@ int main() {
             }
             c.draw(canvas, w1, h, el);
             canvas.present();
+            // game over when hero health 0
             if (h.health <= 0) {
                 windowNo = 3;
             }
             
+            // calculate FPS
             timeElapsed += dt;
             totalTime += dt;
             frameCount++;
@@ -840,9 +788,11 @@ int main() {
             break;
 
         case 3:
+            // game over screen
             c.drawGameOver(canvas);
             break;
         case 2:
+            // infinite map
             c.updateInfinite(canvas, dt, el, h);
             el.update(canvas, dt, -(c.x), -(c.y), h, windowNo);
             if (canvas.keyPressed('E') && cd > 3.f) {
@@ -872,6 +822,7 @@ int main() {
             break;
         }
 
+        // exit the game
         if (canvas.keyPressed(VK_ESCAPE)) {
             averFps = totalFps / (int)totalTime;
             /*cout << "score = " << score << endl;*/
